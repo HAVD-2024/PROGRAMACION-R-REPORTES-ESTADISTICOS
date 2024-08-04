@@ -1,0 +1,72 @@
+```{r}
+library(tidyverse)
+library(readxl)
+library(lubridate)
+```
+
+
+```{r}
+DATA_PATH <- "/Users/Usuario/Desktop/Help ME"
+setwd(DATA_PATH)
+```
+
+
+```{r}
+SALES_DATA <- 'sales.csv'
+sales <- read.csv2(SALES_DATA, sep=";", header=T)
+```
+
+
+```{r}
+STORES_INFO_DATA <- 'stores_info.xlsx'
+stores <- read_excel(STORES_INFO_DATA, sheet = "data")
+```
+
+
+```{r}
+sales_all <- sales %>% left_join(stores, by=c("store"))
+
+```
+
+
+```{r}
+sales_all$date <- ymd(sales_all$date)
+sales_all <- sales_all %>% 
+  mutate(year = year(date), month = month(date)) %>% 
+  filter(year >= 2013 & year <= 2015)
+
+```
+
+
+```{r}
+monthly_sales <- sales_all %>%
+  group_by(country, year, month) %>%
+  summarise(total_sales = sum(sales), .groups = 'drop')
+```
+
+
+```{r}
+total_sales_monthly <- sales_all %>%
+  group_by(year, month) %>%
+  summarise(total_sales_all_countries = sum(sales), .groups = 'drop')
+```
+
+```{r}
+prop_sales <- monthly_sales %>%
+  left_join(total_sales_monthly, by = c("year", "month")) %>%
+  mutate(proportion = total_sales / total_sales_all_countries * 100) %>%
+  select(country, year, month, proportion)
+```
+
+```{r}
+print(prop_sales)
+```
+
+```{r}
+write.csv(prop_sales, "prop_sales_by_country_by_year_month.csv", row.names = FALSE)
+```
+
+```{r}
+cat("La tabla 'prop_sales_by_country_by_year_month.csv' ha sido creada exitosamente.\n")
+```
+

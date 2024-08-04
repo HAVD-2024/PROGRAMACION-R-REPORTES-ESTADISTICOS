@@ -1,0 +1,107 @@
+```{r}
+library(tidyverse)
+library(readxl)
+library(lubridate)
+```
+
+```{r}
+# Establecer el directorio de trabajo
+DATA_PATH <- "/Users/Usuario/Desktop/Help ME"
+setwd(DATA_PATH)
+
+```
+
+```{r}
+# Leer los datos de ventas
+SALES_DATA <- 'sales.csv'
+sales <- read.csv2(SALES_DATA, sep=";", header=T)
+
+```
+
+```{r}
+# Leer los datos de tiendas
+STORES_INFO_DATA <- 'stores_info.xlsx'
+stores <- read_excel(STORES_INFO_DATA, sheet = "data")
+
+```
+
+```{r}
+# Unir las tablas de ventas y tiendas
+sales_all <- sales %>% left_join(stores, by=c("store"))
+
+```
+
+```{r}
+# Convertir la columna de fechas a tipo Date
+sales_all$date <- ymd(sales_all$date)
+
+```
+
+```{r}
+# Determinar la última fecha disponible
+last_date <- max(sales_all$date, na.rm = TRUE)
+# Calcular la fecha de tres meses atrás
+start_date <- last_date %m-% months(3)
+
+```
+
+```{r}
+# Filtrar datos de los últimos tres meses
+recent_sales <- sales_all %>% filter(date >= start_date & date <= last_date)
+
+```
+
+```{r}
+# Calcular el top 10 en valor monetario de ventas y en cantidad de clientes para cada país
+top_stores_sales <- recent_sales %>%
+  group_by(country, store) %>%
+  summarise(total_sales = sum(sales), total_customers = sum(customers)) %>%
+  arrange(desc(total_sales)) %>%
+  group_by(country) %>%
+  slice_head(n = 10) %>%
+  ungroup()
+
+```
+
+```{r}
+# Calcular promedios de ventas y clientes para el top 10
+top_stores_avg <- top_stores_sales %>%
+  group_by(country) %>%
+  summarise(avg_sales = mean(total_sales), avg_customers = mean(total_customers))
+
+```
+
+```{r}
+# Crear visualización
+top_stores_plot <- ggplot(top_stores_sales, aes(x = reorder(store, total_sales), y = total_sales, fill = country)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = total_sales), vjust = -0.5) +
+  labs(title = "Top 10 Tiendas por Valor Monetario de Ventas y Clientes",
+       x = "Tienda", y = "Total de Ventas",
+       fill = "País") +
+  theme_minimal() +
+  facet_wrap(~country, scales = "free") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Mostrar la visualización en la consola
+print(top_stores_plot)
+
+```
+
+```{r}
+# Guardar la figura
+ggsave("top_10_performance_stores_by_country.png", plot = top_stores_plot, width = 10, height = 7)
+
+```
+
+```{r}
+# Imprimir mensaje de éxito
+cat("La figura 'top_10_performance_stores_by_country.png' ha sido creada exitosamente.\n")
+
+```
+
+```{r}
+
+Guarda este código en un archivo con el nombre `top_10_performance_stores_by_country.Rmd`. Para ejecutarlo, puedes abrir el archivo en RStudio y hacer clic en "Knit" para generar el informe. Esto imprimirá los valores calculados en la consola, mostrará la visualización y guardará la figura como un archivo PNG.
+
+```

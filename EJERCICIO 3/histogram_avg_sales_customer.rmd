@@ -1,0 +1,100 @@
+```{r setup, include=FALSE}
+library(tidyverse)
+library(readxl)
+library(lubridate)
+```
+
+```{r}
+DATA_PATH <- "/Users/Usuario/Desktop/Help ME"
+setwd(DATA_PATH)
+cat("Directorio de trabajo establecido a:", DATA_PATH, "\n")
+```
+
+```{r}
+# Leer los datos de ventas
+SALES_DATA <- 'sales.csv'
+sales <- read.csv2(SALES_DATA, sep=";", header=T)
+cat("Datos de ventas leídos correctamente. Número de filas:", nrow(sales), "\n")
+```
+
+```{r}
+# Leer los datos de tiendas
+STORES_INFO_DATA <- 'stores_info.xlsx'
+stores <- read_excel(STORES_INFO_DATA, sheet = "data")
+
+```
+
+```{r}
+STORES_INFO_DATA <- 'stores_info.xlsx'
+stores <- read_excel(STORES_INFO_DATA, sheet = "data")
+cat("Datos de tiendas leídos correctamente. Número de filas:", nrow(stores), "\n")
+```
+
+
+
+```{r}
+sales_all <- sales %>% left_join(stores, by=c("store"))
+cat("Tablas de ventas y tiendas unidas correctamente. Número de filas:", nrow(sales_all), "\n")
+```
+
+```{r}
+sales_all$date <- ymd(sales_all$date)
+cat("Columna de fecha convertida a tipo Date.\n")
+```
+
+```{r}
+sales_all <- sales_all %>% filter(country %in% c("spain", "france"))
+cat("Datos filtrados para España y Francia. Número de filas:", nrow(sales_all), "\n")
+```
+
+```{r}
+sales_all <- sales_all %>% 
+  mutate(avg_sales_customer = ifelse(customers > 0, sales / customers, NA)) %>% 
+  filter(!is.na(avg_sales_customer))
+cat("Variable avg_sales_customer calculada y filtrada. Número de filas válidas:", nrow(sales_all), "\n")
+```
+
+```{r}
+if (nrow(sales_all) == 0) {
+  stop("No hay datos válidos después del filtrado.")
+}
+```
+
+```{r}
+mean_avg_sales <- mean(sales_all$avg_sales_customer, na.rm = TRUE)
+std_dev_avg_sales <- sd(sales_all$avg_sales_customer, na.rm = TRUE)
+cat("Promedio de avg_sales_customer:", mean_avg_sales, "\n")
+cat("Desviación estándar de avg_sales_customer:", std_dev_avg_sales, "\n")
+```
+
+```{r}
+interval_lower <- mean_avg_sales - 2 * std_dev_avg_sales
+interval_upper <- mean_avg_sales + 2 * std_dev_avg_sales
+cat("Intervalo inferior (95%):", interval_lower, "\n")
+cat("Intervalo superior (95%):", interval_upper, "\n")
+```
+
+```{r}
+histogram_plot <- ggplot(sales_all, aes(x = avg_sales_customer)) +
+  geom_histogram(color = "black", fill = "white", bins = 30) +
+  geom_vline(xintercept = mean_avg_sales, linetype = "dashed", color = "blue") +
+  geom_vline(xintercept = interval_lower, linetype = "dashed", color = "red") +
+  geom_vline(xintercept = interval_upper, linetype = "dashed", color = "red") +
+  labs(title = "Histograma de Ventas Promedio por Cliente",
+       x = "Ventas Promedio por Cliente",
+       y = "Frecuencia") +
+  theme_minimal()
+
+# Mostrar el histograma en la consola
+print(histogram_plot)
+cat("Histograma creado y mostrado en consola.\n")
+```
+
+```{r}
+ggsave("histogram_avg_sales_customer.png", plot = histogram_plot)
+cat("La figura 'histogram_avg_sales_customer.png' ha sido guardada exitosamente.\n")
+```
+
+```{r}
+cat("La figura 'histogram_avg_sales_customer.png' ha sido creada exitosamente.\n")
+```
