@@ -1,0 +1,95 @@
+```{r}
+library(tidyverse)
+library(readxl)
+library(lubridate)
+```
+
+```{r}
+data_path <- "/Users/Usuario/Desktop/Help ME"
+setwd(data_path)
+```
+
+```{r}
+# Leer los datos de ventas
+sales_data <- 'sales.csv'
+sales <- read.csv2(sales_data, sep = ";", header = TRUE)
+
+# Leer los datos de tiendas
+stores_info_data <- 'stores_info.xlsx'
+stores <- read_excel(stores_info_data, sheet = "data")
+```
+
+```{r}
+sales_all <- sales %>% left_join(stores, by = c("store"))
+```
+
+```{r}
+sales_all$date <- ymd(sales_all$date)
+```
+
+```{r}
+sales_all$sales_million <- sales_all$sales / 1e6
+```
+
+```{r}
+sales_by_month <- sales_all %>%
+  group_by(year = year(date), month = month(date)) %>%
+  summarise(total_sales_million = sum(sales_million), .groups = 'drop')
+```
+
+```{r}
+evolution_general_plot <- ggplot(sales_by_month, aes(x = as.Date(paste(year, month, "01", sep = "-")), y = total_sales_million)) +
+  geom_line(color = "blue") +
+  labs(title = "Evolución de las Ventas en Millones de Dólares",
+       x = "Fecha",
+       y = "Ventas (Millones de USD)") +
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.title = element_text(color = "black"),
+    axis.title.x = element_text(color = "black"),
+    axis.title.y = element_text(color = "black"),
+    axis.text = element_text(color = "black"),
+    plot.caption = element_text(color = "black"),
+    strip.text = element_text(color = "black")  # Asegura que los títulos de las facetas también sean visibles
+  )
+```
+
+```{r}
+ggsave("2_a_evolution_sales_general.png", plot = evolution_general_plot, width = 10, height = 7)
+```
+
+```{r}
+sales_by_month_country <- sales_all %>%
+  group_by(country, year = year(date), month = month(date)) %>%
+  summarise(total_sales_million = sum(sales_million), .groups = 'drop')
+```
+
+```{r}
+evolution_by_country_plot <- ggplot(sales_by_month_country, aes(x = as.Date(paste(year, month, "01", sep = "-")), y = total_sales_million, color = country)) +
+  geom_line() +
+  labs(title = "Evolución de las Ventas en Millones de Dólares por País",
+       x = "Fecha",
+       y = "Ventas (Millones de USD)",
+       color = "País") +
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.title = element_text(color = "black"),
+    axis.title.x = element_text(color = "black"),
+    axis.title.y = element_text(color = "black"),
+    axis.text = element_text(color = "black"),
+    plot.caption = element_text(color = "black"),
+    strip.text = element_text(color = "black")  # Asegura que los títulos de las facetas también sean visibles
+  )
+```
+
+```{r}
+ggsave("2_a_evolution_sales_by_country.png", plot = evolution_by_country_plot, width = 10, height = 7)
+```
+
+```{r}
+cat("Las figuras '2_a_evolution_sales_general.png' y '2_a_evolution_sales_by_country.png' han sido creadas exitosamente.\n")
+```

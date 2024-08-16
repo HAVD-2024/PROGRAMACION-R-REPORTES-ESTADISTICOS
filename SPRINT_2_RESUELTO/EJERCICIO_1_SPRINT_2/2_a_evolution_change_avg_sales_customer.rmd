@@ -1,0 +1,115 @@
+```{r}
+library(tidyverse)
+library(readxl)
+library(lubridate)
+```
+
+```{r}
+data_path <- "/Users/Usuario/Desktop/Help ME"
+setwd(data_path)
+```
+
+```{r}
+# Leer los datos de ventas
+sales_data <- 'sales.csv'
+sales <- read.csv2(sales_data, sep = ";", header = TRUE)
+
+# Leer los datos de tiendas
+stores_info_data <- 'stores_info.xlsx'
+stores <- read_excel(stores_info_data, sheet = "data")
+```
+
+```{r}
+sales_all <- sales %>% left_join(stores, by = c("store"))
+```
+
+```{r}
+sales_all$date <- ymd(sales_all$date)
+```
+
+```{r}
+sales_all <- sales_all %>%
+  mutate(avg_sales_customer = ifelse(customers > 0, sales / customers, NA)) %>%
+  filter(!is.na(avg_sales_customer))
+```
+
+```{r}
+monthly_avg_sales <- sales_all %>%
+  group_by(year = year(date), month = month(date)) %>%
+  summarise(avg_sales_customer = mean(avg_sales_customer, na.rm = TRUE), .groups = 'drop') %>%
+  arrange(year, month)
+```
+
+```{r}
+monthly_avg_sales <- monthly_avg_sales %>%
+  mutate(prev_avg_sales_customer = lag(avg_sales_customer),
+         pct_change_avg_sales_customer = (avg_sales_customer - prev_avg_sales_customer) / prev_avg_sales_customer * 100) %>%
+  filter(!is.na(pct_change_avg_sales_customer))
+```
+
+```{r}
+evolution_general_plot <- ggplot(monthly_avg_sales, aes(x = as.Date(paste(year, month, "01", sep = "-")), y = pct_change_avg_sales_customer)) +
+  geom_line(color = "blue") +
+  labs(title = "Evolución del Cambio Porcentual del Promedio de Ventas por Cliente",
+       x = "Fecha",
+       y = "Cambio Porcentual (%)") +
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.title = element_text(color = "black"),
+    axis.title.x = element_text(color = "black"),
+    axis.title.y = element_text(color = "black"),
+    axis.text = element_text(color = "black"),
+    plot.caption = element_text(color = "black")
+  )
+```
+
+```{r}
+ggsave("2_c_evolution_change_avg_sales_customer_general.png", plot = evolution_general_plot, width = 10, height = 7)
+```
+
+```{r}
+monthly_avg_sales_by_country_store <- sales_all %>%
+  group_by(country, store_type, year = year(date), month = month(date)) %>%
+  summarise(avg_sales_customer = mean(avg_sales_customer, na.rm = TRUE), .groups = 'drop') %>%
+  arrange(country, store_type, year, month)
+```
+
+```{r}
+monthly_avg_sales_by_country_store <- monthly_avg_sales_by_country_store %>%
+  group_by(country, store_type) %>%
+  mutate(prev_avg_sales_customer = lag(avg_sales_customer),
+         pct_change_avg_sales_customer = (avg_sales_customer - prev_avg_sales_customer) / prev_avg_sales_customer * 100) %>%
+  filter(!is.na(pct_change_avg_sales_customer)) %>%
+  ungroup()
+```
+
+```{r}
+evolution_by_country_store_plot <- ggplot(monthly_avg_sales_by_country_store, aes(x = as.Date(paste(year, month, "01", sep = "-")), y = pct_change_avg_sales_customer, color = store_type)) +
+  geom_line() +
+  facet_wrap(~country, scales = "free_y") +
+  labs(title = "Evolución del Cambio Porcentual del Promedio de Ventas por Cliente por País y Tipo de Tienda",
+       x = "Fecha",
+       y = "Cambio Porcentual (%)",
+       color = "Tipo de Tienda") +
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.title = element_text(color = "black"),
+    axis.title.x = element_text(color = "black"),
+    axis.title.y = element_text(color = "black"),
+    axis.text = element_text(color = "black"),
+    plot.caption = element_text(color = "black"),
+    strip.text = element_text(color = "black") # Asegura que los títulos de los facetas también sean visibles
+  )
+```
+
+```{r}
+ggsave("2_a_evolution_change_avg_sales_customer_by_country_store_type.png", plot = evolution_by_country_store_plot, width = 10, height = 7)
+```
+
+```{r}
+cat("Las figuras '2_c_evolution_change_avg_sales_customer_general.png' y '2_a_evolution_change_avg_sales_customer_by_country_store_type.png' han sido creadas exitosamente.\n")
+```
